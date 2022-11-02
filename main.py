@@ -4,16 +4,16 @@ import mediapipe as mp
 import time
 import tkinter as tk
 from tkinter import filedialog as fd
-from pupil_tracker import pupilTracking
+from pupil_tracker import pupilTracking as pt
 
 
-gaze = pupilTracking()
+spy = pt()
 fileName = fd.askopenfilename()
 cap = cv2.VideoCapture(fileName)
 output_fileName = fileName.replace("mp4","txt")
 
 # cap = cv2.VideoCapture(0)
-# # output_fileName = "vcam.txt"
+# output_fileName = "vcam.txt"
 
 mpHands = mp.solutions.hands
 hands = mpHands.Hands()
@@ -65,7 +65,7 @@ def poseRec(imgRGB, img):
                 print('('+f'{cx},'+ f'{cy});', file=f, end='')
             cv2.circle(img, (cx, cy), 5, (255, 0, 0), cv2.FILLED)
 
-def gazeRec(img):
+def spyRec(img):
     pass
 
 def secDots():
@@ -87,25 +87,25 @@ while True:
     # faceRec(imgRGB)
     # poseRec(imgRGB, img)
     poseRec(cropped_imgRGB, cropped_img)
-    # gazeRec(img)
+    # spyRec(img)
     
-    gaze.refresh(img)
-    img = gaze.annotated_frame()
+    spy.refresh(img)
+    img = spy.annotated_frame()
     text = ""
 
-    if gaze.is_blinking():
+    if spy.is_blinking():
         text = "Blinking"
-    elif gaze.is_right():
+    elif spy.is_right():
         text = "Looking right"
-    elif gaze.is_left():
+    elif spy.is_left():
         text = "Looking left"
-    elif gaze.is_center():
+    elif spy.is_center():
         text = "Looking center"
     
     cv2.putText(img, text, (90, 60), cv2.FONT_HERSHEY_DUPLEX, 1.6, (147, 58, 31), 2)
 
-    left_pupil = gaze.pupil_left_coords()
-    right_pupil = gaze.pupil_right_coords()
+    left_pupil = spy.pupil_left_coords()
+    right_pupil = spy.pupil_right_coords()
     cv2.putText(img, "Left pupil:  " + str(left_pupil), (90, 130), cv2.FONT_HERSHEY_DUPLEX, 0.9, (147, 58, 31), 1)
     cv2.putText(img, "Right pupil: " + str(right_pupil), (90, 165), cv2.FONT_HERSHEY_DUPLEX, 0.9, (147, 58, 31), 1)
 
