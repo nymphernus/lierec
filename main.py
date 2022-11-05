@@ -66,7 +66,9 @@ def poseRec(imgRGB, img):
             cv2.circle(img, (cx, cy), 5, (255, 0, 0), cv2.FILLED)
 
 def spyRec(img):
-    pass
+    spy.refresh(img)
+    img = spy.annotated_frame()
+    return img
 
 def secDots():
     cv2.circle(img, (1282, 357), 5, (0, 0, 100), cv2.FILLED)
@@ -89,8 +91,7 @@ while True:
     poseRec(cropped_imgRGB, cropped_img)
     # spyRec(img)
     
-    spy.refresh(img)
-    img = spy.annotated_frame()
+    img = spyRec(img)
     text = ""
 
     if spy.is_blinking():
