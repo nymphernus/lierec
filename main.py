@@ -51,7 +51,7 @@ def faceRec(img):
 
 def poseRec(imgRGB, img):
     res = pose.process(imgRGB)
-    with open(output_fileName, 'a') as f:
+    with open(output_fileName, 'w') as f:
         print('', file=f)
         print( f'{count} ', file=f, end='')
     if res.pose_landmarks:
@@ -61,7 +61,7 @@ def poseRec(imgRGB, img):
             
             #print(id, lm)
             cx, cy = int(lm.x * w), int(lm.y * h)
-            with open(output_fileName, 'a') as f:
+            with open(output_fileName, 'w') as f:
                 print('('+f'{cx},'+ f'{cy});', file=f, end='')
             cv2.circle(img, (cx, cy), 5, (255, 0, 0), cv2.FILLED)
 
