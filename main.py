@@ -12,6 +12,7 @@ mpFaceMesh = mp.solutions.face_mesh
 faceMesh = mpFaceMesh.FaceMesh(max_num_faces=2)
 mpPose = mp.solutions.pose
 pose = mpPose.Pose()
+face_lm_id = (1, 6, 23, 27, 130, 243, 253, 257, 359, 463)
 
 def poseRec(cropped_img, output_fileName_pose):
     res = pose.process(cv2.cvtColor(cropped_img, cv2.COLOR_BGR2RGB))
@@ -44,8 +45,9 @@ def faceRec(img, output_fileName_face):
         for id, lm in enumerate(faceLms.landmark):
             ih, iw, ic = img.shape
             x, y = int(lm.x*iw), int(lm.y*ih)
-            with open(output_fileName_face, 'a') as f:
-                print(''+f'{x} '+ f'{y} ', file=f, end='')
+            if id in face_lm_id:
+                with open(output_fileName_face, 'a') as f:
+                    print(''+f'{x} '+ f'{y} ', file=f, end='')
     with open(output_fileName_face, 'a') as f:
         print('', file=f)
 
@@ -94,6 +96,7 @@ def process_video_multiprocessing(multiprocfile):
         cv2.destroyAllWindows()
     cap.release()
     cv2.destroyAllWindows()
+
 def files_combine(search_mask, switch_mask):
     output_list = [i for i in os.listdir() if i.endswith(search_mask)]
     output_list.sort()
@@ -103,6 +106,7 @@ def files_combine(search_mask, switch_mask):
             s = open(j).read()
             f.write(s)
             os.remove(j)
+
 def multi_process():
     p = mpr.Pool(num_processes)
     p.map(process_video_multiprocessing, multiprocfile)
