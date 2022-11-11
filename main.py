@@ -98,14 +98,16 @@ def process_video_multiprocessing(multiprocfile):
     cv2.destroyAllWindows()
 
 def files_combine(search_mask, switch_mask):
-    output_list = [i for i in os.listdir() if i.endswith(search_mask)]
+    fdir = os.path.basename(fileName)
+    dir = os.path.abspath(fileName).replace(fdir, '')
+    output_list = [i for i in os.listdir(dir) if i.endswith(search_mask)]
     output_list.sort()
     output_fileName = fileName.replace(".mp4",switch_mask)
     with open(output_fileName,'w') as f:
         for j in output_list:
-            s = open(j).read()
+            s = open(dir+j).read()
             f.write(s)
-            os.remove(j)
+            os.remove(dir+j)
 
 def multi_process():
     p = mpr.Pool(num_processes)
