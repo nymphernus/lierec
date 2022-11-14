@@ -51,8 +51,8 @@ def faceRec(img, output_fileName_face):
     with open(output_fileName_face, 'a') as f:
         print('', file=f)
 
-def process_video_multiprocessing(multiprocfile):
-    num_processes, fileName = multiprocfile
+def process_video_multiprocessing(thread_list):
+    num_processes, fileName = thread_list
     cap = cv2.VideoCapture(fileName)
     frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     frames_on_process = math.ceil(frame_count/mpr.cpu_count())
@@ -68,12 +68,9 @@ def process_video_multiprocessing(multiprocfile):
         output_fileName_face = fileName.replace(".mp4","_0{}_face_temp.txt".format(num_processes))
         output_fileName_pose = fileName.replace(".mp4","_0{}_pose_temp.txt".format(num_processes))
     
-    with open(output_fileName_pupil, 'w') as f:
-        pass
-    with open(output_fileName_face, 'w') as f:
-        pass
-    with open(output_fileName_pose, 'w') as f:
-        pass
+    open(output_fileName_pupil, 'w')
+    open(output_fileName_face, 'w')
+    open(output_fileName_pose, 'w')
     
     count = start_frame
     
@@ -93,25 +90,21 @@ def process_video_multiprocessing(multiprocfile):
             count+=1
     except:
         cap.release()
-        cv2.destroyAllWindows()
     cap.release()
-    cv2.destroyAllWindows()
 
 def files_combine(search_mask, switch_mask):
-    fdir = os.path.basename(fileName)
-    dir = os.path.abspath(fileName).replace(fdir, '')
+    dir = os.path.abspath(fileName).replace(os.path.basename(fileName), '')
     output_list = [i for i in os.listdir(dir) if i.endswith(search_mask)]
     output_list.sort()
     output_fileName = fileName.replace(".mp4",switch_mask)
     with open(output_fileName,'w') as f:
         for j in output_list:
-            s = open(dir+j).read()
-            f.write(s)
+            f.write(open(dir+j).read())
             os.remove(dir+j)
 
 def multi_process():
     p = mpr.Pool(num_processes)
-    p.map(process_video_multiprocessing, multiprocfile)
+    p.map(process_video_multiprocessing, thread_list)
     files_combine('_pupil_temp.txt','_pupil_complete.txt')
     files_combine('_face_temp.txt','_face_complete.txt')
     files_combine('_pose_temp.txt','_pose_complete.txt')
@@ -120,10 +113,10 @@ def multi_process():
 if __name__ == '__main__':
     fileName = fd.askopenfilename()
     num_processes = mpr.cpu_count()
-    multiprocfile = [[0] * 2 for i in range(num_processes)]
-    for nop in range(num_processes):
-        multiprocfile[nop][0] = nop
-        multiprocfile[nop][1] = fileName
+    thread_list = [[0] * 2 for i in range(num_processes)]
+    for i in range(num_processes):
+        thread_list[i][0] = i
+        thread_list[i][1] = fileName
     start_time = time.time()
     multi_process()
     print("%s seconds" % math.ceil((time.time() - start_time)))
