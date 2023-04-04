@@ -1,3 +1,5 @@
+Python 3.10.10
+
 Visual Studio installation is required for dlib
 
 python -m pip install -r requirements.txt
