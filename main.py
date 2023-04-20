@@ -115,7 +115,7 @@ def process_video_multiprocessing(thread_list):
             if not success:
                 break
             # устанавливаем позицию чтения видеофайла на текущий кадр
-            cap.set(1, start_frame)
+            cap.set(1, count)
             img = cv2.resize(img,(1920,1080))
             cropped_img = cv2.rotate(cv2.resize(img[10:350, 1285:1900],(1920,1080)), 2)
 
