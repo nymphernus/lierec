@@ -11,7 +11,7 @@
     </li>
     <li>Замените файл-пустышку на готовую модель с Google Drive:
         <pre><code>/pupil_tracker/trained_models/shape_predictor_68_face_landmarks.dat</code></pre>
-        <pre>Trained model - https://drive.google.com/file/d/1jYe-izvmbfGyRE_4Ww-XbVrk9HpmQAmV/view?usp=share_link</pre>
+        <p>Trained model - https://drive.google.com/file/d/1jYe-izvmbfGyRE_4Ww-XbVrk9HpmQAmV/view?usp=share_link</p>
     </li>
 </ol>
 
