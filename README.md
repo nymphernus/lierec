@@ -6,6 +6,9 @@
 <ol>
     <li>Python 3.10.10</li>
     <li>Установка Visual Studio необходима для dlib</li>
+    <li>Клонируйте репозиторий:
+        <pre><code>git clone https://github.com/nymphernus/lierec.git</code></pre>
+    </li>
     <li>Установите необходимые библиотеки:
         <pre><code>python -m pip install -r requirements.txt</code></pre>
     </li>
