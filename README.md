@@ -5,7 +5,8 @@
 <h2>Установка</h2>
 <ol>
     <li>Python 3.10.10</li>
-    <li>Установка Visual Studio необходима для dlib</li>
+    <li>Установка Cmake необходима для dlib</li>
+        <pre><code>https://cmake.org/download/</code></pre>
     <li>Клонируйте репозиторий:
         <pre><code>git clone https://github.com/nymphernus/lierec.git</code></pre>
     </li>
