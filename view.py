@@ -94,7 +94,6 @@ class RealTimeVideoProcessor:
             return annotated_frame, pose_skeleton
             
         except Exception as e:
-            # Возвращаем оригинальный кадр и пустое изображение при ошибках
             return frame, np.zeros((615, 340, 3), dtype=np.uint8)
 
 def main():
