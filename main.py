@@ -1,177 +1,200 @@
 import cv2
 import mediapipe as mp
-from pupil_tracker import pupilTracking as pt
+from pupil_tracker import pupilTracking
 from tkinter import filedialog as fd
 import multiprocessing as mpr
 import math
 import time
-import os
+from pathlib import Path
+from typing import Tuple
+import logging
 
-# создание экземпляра класса для отслеживания зрачков
-spy = pt()
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
-# создание экземпляра класса для отслеживания лиц
-mp_face_mesh = mp.solutions.face_mesh
-face_mesh = mp_face_mesh.FaceMesh(max_num_faces=2)
-# индексы отслеживаемых точек на лице
-face_lm_id = (1, 6, 23, 27, 130, 243, 253, 257, 359, 463)
-
-# создание экземпляра класса для отслеживания поз
-mp_pose = mp.solutions.pose
-pose = mp_pose.Pose()
-
-# отслеживание точек на теле
-def pose_rec(cropped_img, output_fileName_pose):
-    """
-    Записывает координаты ключевых точек позы в файл.
-    cropped_img: изображение, на котором обнаруживается поза
-    output_fileName_pose: имя выходного файла для записи координат
-    """
-    # обработка изображения для получения ключевых точек позы
-    res = pose.process(cv2.cvtColor(cropped_img, cv2.COLOR_BGR2RGB))
-    if res.pose_landmarks:
-        with open(output_fileName_pose, 'a') as f:
-            # перебор всех ключевых точек позы
-            for _, lm in enumerate(res.pose_landmarks.landmark):
-                # получение высоты и ширины обработанного изображения
-                h, w, _ = cropped_img.shape
-                # вычисление координаты точки на изображении
-                cx, cy = int(lm.x * w), int(lm.y * h)
-                f.write(f"{cx} {cy} ")
-            f.write('\n')
-
-# отслеживание зрачков
-def pupil_rec(img, output_fileName_pupil):
-    """
-    Записывает координаты зрачков в файл.
-    img: изображение, на котором обнаруживаются зрачки
-    output_fileName_pupil: имя выходного файла для записи координат
-    """
-    spy.refresh(img)
-    if spy.pupils_located:
-        x_left, y_left = spy.pupil_left_coords()
-        x_right, y_right = spy.pupil_right_coords()
-    else:
-        x_left, y_left = 0, 0
-        x_right, y_right = 0, 0
-
-    with open(output_fileName_pupil, 'a') as f:
-        f.write(f"{x_left} {y_left} {x_right} {y_right}\n")
-
-
-# отслеживание точек на лице
-def face_rec(img, output_fileName_face):
-    """
-    Записывает координаты ключевых точек лица в файл.
-    img: изображение, на котором обнаруживаются ключевые точки лица
-    output_fileName_face: имя выходного файла для записи координат
-    """
-    # обработка изображения для получения ключевых точек лица
-    res = face_mesh.process(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-
-    # проверка наличия ключевых точек лица в обработанном изображении
-    if res.multi_face_landmarks:
-        # перебор всех обнаруженных ключевых точек лица
-        for face_lms in res.multi_face_landmarks:
-            with open(output_fileName_face, 'a') as f:
-                # перебор всех идентификаторов и координат ключевых точек лица
-                for id, lm in enumerate(face_lms.landmark):
-                    # получение высоты и ширины обработанного изображения
-                    ih, iw, _ = img.shape
-                    # вычисление координаты точки на изображении
-                    x, y = int(lm.x*iw), int(lm.y*ih)
-                    # проверка, является ли ключевая точка лицом
-                    if id in face_lm_id:
-                        # запись координаты ключевой точки в файл
-                        f.write(f"{x} {y} ")
-                f.write('\n')
-
-def process_video_multiprocessing(thread_list):
-    # получаем количество процессов и имя файла из списка потоков
-    num_processes, fileName = thread_list
-    # открываем видеофайл и получаем количество кадров в нем
-    cap = cv2.VideoCapture(fileName)
-    frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    # вычисляем количество кадров, которые будет обрабатывать каждый процесс  
-    frames_on_process = math.ceil(frame_count/mpr.cpu_count())
-    # вычисляем начальный и конечный кадры для текущего процесса
-    start_frame = frames_on_process*num_processes
-    end_frame = frames_on_process*(num_processes+1)
-
-    # создаем временные файлы для записи результатов
-    output_fileName_pupil = fileName.replace(".mp4", f"_{num_processes:02d}_pupil_temp.txt")
-    output_fileName_face = fileName.replace(".mp4", f"_{num_processes:02d}_face_temp.txt")
-    output_fileName_pose = fileName.replace(".mp4", f"_{num_processes:02d}_pose_temp.txt")
+class VideoProcessor:
+    # Класс для обработки видео с отслеживанием зрачков, лица и позы
     
-    open(output_fileName_pupil, 'w')
-    open(output_fileName_face, 'w')
-    open(output_fileName_pose, 'w')
-    
-    count = start_frame
+    def __init__(self):
+        # Инициализация всех детекторов
+        self.pupil_tracker = pupilTracking()
+        self.face_mesh = mp.solutions.face_mesh.FaceMesh(max_num_faces=2)
+        self.pose_detector = mp.solutions.pose.Pose()
+        
+        self.face_landmark_ids = {1, 6, 23, 27, 130, 243, 253, 257, 359, 463}
+        
+        self.FRAME_WIDTH = 1920
+        self.FRAME_HEIGHT = 1080
+        self.CROP_REGION = (1285, 1900, 10, 350)  # x1, x2, y1, y2
 
+    def process_pose(self, cropped_img: cv2.Mat, output_path: Path) -> None:
+        # Обрабатывает позу и записывает координаты в файл
+        try:
+            results = self.pose_detector.process(cv2.cvtColor(cropped_img, cv2.COLOR_BGR2RGB))
+            
+            if results.pose_landmarks:
+                with open(output_path, 'a') as f:
+                    coordinates = []
+                    for landmark in results.pose_landmarks.landmark:
+                        h, w = cropped_img.shape[:2]
+                        cx, cy = int(landmark.x * w), int(landmark.y * h)
+                        coordinates.extend([str(cx), str(cy)])
+                    f.write(' '.join(coordinates) + '\n')
+        except Exception as e:
+            logger.error(f"Ошибка обработки позы: {e}")
+
+    def process_pupils(self, img: cv2.Mat, output_path: Path) -> None:
+        # Обрабатывает зрачки и записывает координаты в файл
+        try:
+            self.pupil_tracker.refresh(img)
+            
+            if self.pupil_tracker.pupils_located:
+                x_left, y_left = self.pupil_tracker.pupil_left_coords()
+                x_right, y_right = self.pupil_tracker.pupil_right_coords()
+            else:
+                x_left = y_left = x_right = y_right = 0
+
+            with open(output_path, 'a') as f:
+                f.write(f"{x_left} {y_left} {x_right} {y_right}\n")
+        except Exception as e:
+            logger.error(f"Ошибка обработки зрачков: {e}")
+
+    def process_face_landmarks(self, img: cv2.Mat, output_path: Path) -> None:
+        # Обрабатывает лицевые точки и записывает координаты в файл
+        try:
+            results = self.face_mesh.process(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+            
+            if results.multi_face_landmarks:
+                with open(output_path, 'a') as f:
+                    for face_landmarks in results.multi_face_landmarks:
+                        coordinates = []
+                        h, w = img.shape[:2]
+                        
+                        for idx, landmark in enumerate(face_landmarks.landmark):
+                            if idx in self.face_landmark_ids:
+                                x, y = int(landmark.x * w), int(landmark.y * h)
+                                coordinates.extend([str(x), str(y)])
+                        
+                        f.write(' '.join(coordinates) + '\n')
+        except Exception as e:
+            logger.error(f"Ошибка обработки лицевых точек: {e}")
+
+    def crop_image_region(self, img: cv2.Mat) -> cv2.Mat:
+        # Обрезает изображение по заданной области
+        x1, x2, y1, y2 = self.CROP_REGION
+        cropped = img[y1:y2, x1:x2]
+        resized = cv2.resize(cropped, (self.FRAME_WIDTH, self.FRAME_HEIGHT))
+        return cv2.rotate(resized, 2)
+
+def process_video_segment(args: Tuple[int, str, int, int]) -> None:
+    # Обрабатывает сегмент видео в отдельном процессе
+    process_id, video_path, start_frame, end_frame = args
+    processor = VideoProcessor()
+    
     try:
-        while count < end_frame:
-            cap.set(1, count)
+        cap = cv2.VideoCapture(video_path)
+        if not cap.isOpened():
+            raise ValueError(f"Не удалось открыть видео: {video_path}")
+        
+        video_path_obj = Path(video_path)
+        base_name = video_path_obj.stem
+        output_dir = video_path_obj.parent
+        
+        pupil_file = output_dir / f"{base_name}_{process_id:02d}_pupil_temp.txt"
+        face_file = output_dir / f"{base_name}_{process_id:02d}_face_temp.txt"
+        pose_file = output_dir / f"{base_name}_{process_id:02d}_pose_temp.txt"
+        
+        for file_path in [pupil_file, face_file, pose_file]:
+            open(file_path, 'w').close()
+        
+        frame_count = start_frame
+        while frame_count < end_frame:
+            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_count)
             success, img = cap.read()
+            
             if not success:
                 break
-            # устанавливаем позицию чтения видеофайла на текущий кадр
-            img = cv2.resize(img,(1920,1080))
-            cropped_img = cv2.rotate(cv2.resize(img[10:350, 1285:1900],(1920,1080)), 2)
-
-            # выполняем обработку кадра
-            pupil_rec(img, output_fileName_pupil)
-            face_rec(img, output_fileName_face)
-            pose_rec(cropped_img, output_fileName_pose)
+                
+            img = cv2.resize(img, (processor.FRAME_WIDTH, processor.FRAME_HEIGHT))
+            cropped_img = processor.crop_image_region(img)
             
-            count+=1
+            processor.process_pupils(img, pupil_file)
+            processor.process_face_landmarks(img, face_file)
+            processor.process_pose(cropped_img, pose_file)
+            
+            frame_count += 1
+            
     except Exception as e:
-        print(f"Ошибка: {e}")
-        cap.release()
+        logger.error(f"Ошибка в процессе {process_id}: {e}")
     finally:
-        cap.release()
+        if 'cap' in locals():
+            cap.release()
 
-def files_combine(search_mask, switch_mask):
-    # получаем директорию файла и исходный список файлов
-    dir = os.path.abspath(fileName).replace(os.path.basename(fileName), '')
-    output_list = [i for i in os.listdir(dir) if i.endswith(search_mask)]
-    # сортируем список файлов
-    output_list.sort()
+def combine_temp_files(video_path: str, file_type: str) -> None:
+    # Объединяет временные файлы в один
+    try:
+        video_path_obj = Path(video_path)
+        base_name = video_path_obj.stem
+        output_dir = video_path_obj.parent
+        
+        temp_files = list(output_dir.glob(f"{base_name}_*_{file_type}_temp.txt"))
+        temp_files.sort()
+        
+        final_file = output_dir / f"{base_name}_{file_type}_complete.txt"
+        
+        with open(final_file, 'w') as output_file:
+            for temp_file in temp_files:
+                with open(temp_file, 'r') as f:
+                    output_file.write(f.read())
+                temp_file.unlink()
+                
+        logger.info(f"Файл {file_type} успешно объединен: {final_file}")
+        
+    except Exception as e:
+        logger.error(f"Ошибка объединения файлов {file_type}: {e}")
 
-    # формируем имя выходного файла
-    output_fileName = fileName.replace(".mp4",switch_mask)
-    with open(output_fileName,'w') as f:
-        # читаем содержимое файла и записываем его в выходной файл
-        for j in output_list:
-            f.write(open(os.path.join(dir, j)).read())
-            # удаляем прочитанный файл
-            os.remove(os.path.join(dir, j))
+def get_video_frame_count(video_path: str) -> int:
+    # Получает количество кадров в видео
+    cap = cv2.VideoCapture(video_path)
+    frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    cap.release()
+    return frame_count
 
-def multi_process():
-    # создаем пул процессов, где num_processe = кол-во потоков процессора
-    p = mpr.Pool(num_processes)
-    # запускаем каждый экземпляр функции на отдельном потоке
-    p.map(process_video_multiprocessing, thread_list)
-
-    # объединяем временные файлы
-    files_combine('_pupil_temp.txt','_pupil_complete.txt')
-    files_combine('_face_temp.txt','_face_complete.txt')
-    files_combine('_pose_temp.txt','_pose_complete.txt')
-
+def main():
+    video_path = fd.askopenfilename(filetypes=[("Video files", "*.mp4")])
+    if not video_path:
+        logger.info("Видео не выбрано")
+        return
+    
+    num_processes = mpr.cpu_count()
+    logger.info(f"Используется {num_processes} процессов")
+    
+    frame_count = get_video_frame_count(video_path)
+    frames_per_process = math.ceil(frame_count / num_processes)
+    
+    process_args = []
+    for i in range(num_processes):
+        start_frame = frames_per_process * i
+        end_frame = min(frames_per_process * (i + 1), frame_count)
+        process_args.append((i, video_path, start_frame, end_frame))
+    
+    start_time = time.time()
+    
+    try:
+        with mpr.Pool(processes=num_processes) as pool:
+            pool.map(process_video_segment, process_args)
+        
+        for file_type in ['pupil', 'face', 'pose']:
+            combine_temp_files(video_path, file_type)
+            
+        processing_time = time.time() - start_time
+        logger.info(f"Обработка завершена успешно!")
+        logger.info(f"Видео: {video_path}")
+        logger.info(f"Процессов: {num_processes}")
+        logger.info(f"Время: {math.ceil(processing_time)} сек.")
+        
+    except Exception as e:
+        logger.error(f"Ошибка во время обработки: {e}")
 
 if __name__ == '__main__':
-    # выбор видеофайла через диалоговое окно
-    fileName = fd.askopenfilename()
-    # определение кол-ва доступных потоков на компьютере
-    num_processes = mpr.cpu_count()
-
-    # создание списка потоков, каждый из которых будет обрабатывать свою часть видеофайла
-    thread_list = [[i, fileName] for i in range(num_processes)]
-
-    start_time = time.time()
-
-    # запуск обработки видеофайла в нескольких потоках
-    multi_process()
-
-    finish_time = math.ceil((time.time() - start_time))
-    print(f"\n Обработка закончена\n Видеофайл - {fileName}\n Потоков - {num_processes}\n Время - {finish_time} сек.")
+    main()
