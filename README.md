@@ -42,7 +42,8 @@
     <li><strong>Многопоточность</strong>: Обработка видеофайлов осуществляется с использованием многопоточности для повышения производительности.</li>
 </ul>
 <h2>Скриншот</h2>
-<img src="https://user-images.githubusercontent.com/103174654/200115061-cb617eb5-a75a-4a38-9e60-2e318cfc9af6.jpg" alt="img_1">
+<img width="1280" height="719" alt="200115061-cb617eb5-a75a-4a38-9e60-2e318cfc9af6-fotor-2025082965615" src="https://github.com/user-attachments/assets/c0c1c466-8572-4df1-bddf-71570dcecc42" />
+
 <h2>Примечания</h2>
 <ul>
     <li>Убедитесь, что видеофайл имеет формат, поддерживаемый OpenCV (например, .mp4).</li>
