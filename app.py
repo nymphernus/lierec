@@ -18,14 +18,14 @@ class VideoProcessor:
     def __init__(self):
         # Инициализация всех детекторов
         self.pupil_tracker = pupilTracking()
-        self.face_mesh = mp.solutions.face_mesh.FaceMesh(max_num_faces=2)
-        self.pose_detector = mp.solutions.pose.Pose()
+        self.face_mesh = mp.solutions.face_mesh.FaceMesh(max_num_faces=1, refine_landmarks=True, min_detection_confidence=0.7, min_tracking_confidence=0.7)
+        self.pose_detector = mp.solutions.pose.Pose(model_complexity=0, min_detection_confidence=0.7, min_tracking_confidence=0.7, enable_segmentation=False)
         
-        self.face_landmark_ids = {1, 6, 23, 27, 130, 243, 253, 257, 359, 463}
+        self.face_landmark_ids = frozenset([1, 6, 23, 27, 130, 243, 253, 257, 359, 463])
         
         self.FRAME_WIDTH = 1920
         self.FRAME_HEIGHT = 1080
-        self.CROP_REGION = (1285, 1900, 10, 350)  # x1, x2, y1, y2
+        self.CROP_REGION = (1285, 1900, 10, 350)
 
     def process_pose(self, cropped_img: cv2.Mat, output_path: Path) -> None:
         # Обрабатывает позу и записывает координаты в файл

@@ -2,15 +2,14 @@ import cv2
 import mediapipe as mp
 from pupil_tracker import pupilTracking as pt
 import numpy as np
-import tkinter as tk
-from tkinter import filedialog
+from tkinter import filedialog as fd
 
 class RealTimeVideoProcessor:
     
     def __init__(self):
         self.pupil_tracker = pt()
         self.face_mesh = mp.solutions.face_mesh.FaceMesh(max_num_faces=1, refine_landmarks=True, min_detection_confidence=0.7, min_tracking_confidence=0.7)
-        self.pose_detector = mp.solutions.pose.Pose(model_complexity=0, min_detection_confidence=0.7, min_tracking_confidence=0.7)
+        self.pose_detector = mp.solutions.pose.Pose(model_complexity=0, min_detection_confidence=0.7, min_tracking_confidence=0.7, enable_segmentation=False)
         
         self.face_landmark_ids = [1, 6, 23, 27, 130, 243, 253, 257, 359, 463]
         
@@ -95,33 +94,27 @@ class RealTimeVideoProcessor:
             return annotated_frame, pose_skeleton
             
         except Exception as e:
+            # Возвращаем оригинальный кадр и пустое изображение при ошибках
             return frame, np.zeros((615, 340, 3), dtype=np.uint8)
 
 def main():
-    print("Выберите источник видео:")
-    print("1. Камера (по умолчанию)")
-    print("2. Видеофайл")
+    choice = input("Введите 1 для выбора видеофайла: ").strip()
     
-    choice = input("Введите номер (1 или 2): ").strip()
+    use_file = (choice == "1")
+    video_source = 0
+    video_path = None
     
-    if choice == "2":
+    if use_file:
         try:
-            root = tk.Tk()
-            root.withdraw()
-            video_path = filedialog.askopenfilename(
-                title="Выберите видеофайл",
-                filetypes=[("Video files", "*.mp4 *.avi *.mov *.mkv")]
-            )
+            video_path = fd.askopenfilename(filetypes=[("Video files", "*.mp4")])
             if not video_path:
                 print("Файл не выбран. Используется камера.")
-                video_source = 0
+                use_file = False
             else:
                 video_source = video_path
         except:
             print("Ошибка при выборе файла. Используется камера.")
-            video_source = 0
-    else:
-        video_source = 0
+            use_file = False
     
     cap = cv2.VideoCapture(video_source)
     
@@ -148,10 +141,11 @@ def main():
             processed_frame, pose_skeleton = processor.process_frame(frame)
             
             display_frame = cv2.resize(processed_frame, (960, 540))
-            cv2.imshow('Main camera', display_frame)
+            cv2.imshow('Main Cam', display_frame)
             
-            skeleton_display = cv2.resize(pose_skeleton, (200, 400))
-            cv2.imshow('Additional camera', skeleton_display)
+            if use_file:
+                skeleton_display = cv2.resize(pose_skeleton, (200, 400))
+                cv2.imshow('Cam[v2]', skeleton_display)
             
             key = cv2.waitKey(1) & 0xFF
             if key == ord('q'):
