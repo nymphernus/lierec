@@ -9,8 +9,8 @@ class RealTimeVideoProcessor:
     
     def __init__(self):
         self.pupil_tracker = pt()
-        self.face_mesh = mp.solutions.face_mesh.FaceMesh(max_num_faces=2, refine_landmarks=True)
-        self.pose_detector = mp.solutions.pose.Pose()
+        self.face_mesh = mp.solutions.face_mesh.FaceMesh(max_num_faces=1, refine_landmarks=True, min_detection_confidence=0.7, min_tracking_confidence=0.7)
+        self.pose_detector = mp.solutions.pose.Pose(model_complexity=0, min_detection_confidence=0.7, min_tracking_confidence=0.7)
         
         self.face_landmark_ids = [1, 6, 23, 27, 130, 243, 253, 257, 359, 463]
         
