@@ -16,11 +16,15 @@
 4. Создайте виртуальное окружение(опционально):
     ```bash
     python -m venv venv
-    
+
     # Активация виртуального окружения
     venv/Scripts/activate
     ```
-5. Замените файл-пустышку на готовую модель с Google Drive:
+5. Установите зависимости:
+    ```bash
+    pip install -r requirements.txt
+    ```
+6. Замените файл-пустышку на готовую модель с Google Drive:
     ```
     /pupil_tracker/trained_models/shape_predictor_68_face_landmarks.dat
     ```
